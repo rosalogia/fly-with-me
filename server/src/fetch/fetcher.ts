@@ -239,8 +239,10 @@ export function startRefresh(
     for (;;) {
       const spec = queue.shift()
       if (!spec) return
+      let touchedNetwork = true
       try {
         const res = await executeSpec(db, provider, spec, cfg, { force: opts.force })
+        touchedNetwork = !res.cached
         if (res.cached) job.skippedCacheHits++
         if (res.status === 'error') {
           job.errors.push(`${spec.kind} ${spec.partyId} ${spec.depDate}: ${res.error}`)
@@ -249,7 +251,9 @@ export function startRefresh(
         job.errors.push(`${spec.kind} ${spec.partyId} ${spec.depDate}: ${e instanceof Error ? e.message : e}`)
       }
       job.done++
-      if (spacing && queue.length) await sleep(spacing)
+      // Spacing protects the provider's rate limit — cache hits never touch the
+      // provider, so they complete instantly instead of paying the pacing tax.
+      if (spacing && touchedNetwork && queue.length) await sleep(spacing)
     }
   }
 

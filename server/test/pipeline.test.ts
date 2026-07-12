@@ -82,6 +82,18 @@ describe('pipeline (fixture provider)', () => {
     expect(frontier).toBeLessThan(options.length) // fixed 3-axis frontier stays selective
   })
 
+  it('cache hits skip the rate-limit spacing (fully-cached refresh is near-instant)', async () => {
+    const { startRefresh, waitForJob } = await import('../src/fetch/fetcher.js')
+    const specs = planQueries(cfg) // 12 specs, all cached by beforeAll
+    const t0 = Date.now()
+    const job = startRefresh(db, provider, cfg, specs, { spacingMs: 500, concurrency: 1 })
+    const done = await waitForJob(job.id)
+    const elapsed = Date.now() - t0
+    expect(done.skippedCacheHits).toBe(specs.length)
+    // With the pacing bug this would take specs.length * 500ms ≈ 6s.
+    expect(elapsed).toBeLessThan(1500)
+  })
+
   it('concurrent refreshes of the same config coalesce into one job', async () => {
     const { startRefresh, waitForJob } = await import('../src/fetch/fetcher.js')
     const specs = planQueries(cfg)
