@@ -141,13 +141,19 @@ export function soloGcCents(c: SoloCandidateDto, p: CostPrefs): number {
   )
 }
 
-/** For each party, the best solo candidate under the given prefs. */
+/**
+ * For each party, the best solo candidate under the given prefs — optionally
+ * pinned to one date pair, for like-for-like comparison against a group option
+ * on those dates.
+ */
 export function pickSoloBest(
   candidates: SoloCandidateDto[],
   prefs: CostPrefs,
+  pair?: { depDate: string; retDate: string },
 ): Map<string, SoloCandidateDto> {
   const best = new Map<string, SoloCandidateDto>()
   for (const c of candidates) {
+    if (pair && (c.depDate !== pair.depDate || c.retDate !== pair.retDate)) continue
     const cur = best.get(c.partyId)
     if (!cur || soloGcCents(c, prefs) < soloGcCents(cur, prefs)) best.set(c.partyId, c)
   }

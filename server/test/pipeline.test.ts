@@ -138,14 +138,19 @@ describe('pipeline (fixture provider)', () => {
       expect(c.timeQuality).toBeGreaterThanOrEqual(0)
       expect(c.timeQuality).toBeLessThanOrEqual(1)
     }
-    // The unconstrained minimum ticket price is <= any group option's price for
-    // the same party (group options draw from the same itinerary pool).
+    // Candidates exist for every searched date pair (selection is per-pair).
+    const pairs = new Set(candidates.map((c) => `${c.depDate}|${c.retDate}`))
+    expect(pairs.size).toBeGreaterThan(1)
+    // Same-dates solo minimum is <= any group option's price for that party on
+    // those dates (both draw from the same itinerary pool).
     const options = assembleOptions(db, cfg)
-    for (const partyId of parties) {
-      const soloMin = Math.min(...candidates.filter((c) => c.partyId === partyId).map((c) => c.perPersonCents))
-      for (const o of options) {
-        const p = o.parties.find((x) => x.partyId === partyId)
-        if (p) expect(soloMin).toBeLessThanOrEqual(p.perPersonCents)
+    for (const o of options) {
+      for (const p of o.parties) {
+        const sameDates = candidates.filter(
+          (c) => c.partyId === p.partyId && c.depDate === o.pairDepart && c.retDate === o.pairReturn,
+        )
+        expect(sameDates.length).toBeGreaterThan(0)
+        expect(Math.min(...sameDates.map((c) => c.perPersonCents))).toBeLessThanOrEqual(p.perPersonCents)
       }
     }
   })

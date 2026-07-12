@@ -63,8 +63,12 @@ Machine-readable endpoint list: `GET /api`.
   that same sum, included for convenience, so skip it when adding components). Omitting
   `prefs` applies the defaults shown above.
 - **pareto: true** — nothing else is cheaper AND faster AND fairer; the honest shortlist.
-- **solo** (`GET .../solo`) — per-party fly-alone baselines: what each party could do if
-  they abandoned the group. min-by: `perPersonCents + hourly*(doorMin/60)*100 + (1-timeQuality)*odd*100`.
+- **solo** (`GET .../solo`) — per-party fly-alone candidates, selected PER DATE PAIR.
+  For a like-for-like comparison against a group option, FIRST filter candidates to that
+  option's `pairDepart`/`pairReturn`, then min-by:
+  `perPersonCents + hourly*(doorMin/60)*100 + (1-timeQuality)*odd*100`. (An unfiltered min
+  answers a different question — "leave the group AND move the dates".) Each candidate has
+  an `href` to its full segments, so claims are verifiable.
 - **snapshot** — frozen config+results at `/s/<id>`. `top: 0` = config-only (share a setup).
 
 ## Recipes

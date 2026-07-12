@@ -24,9 +24,10 @@ interface Row {
  * itineraries if they abandoned the group entirely. Drawn from the SAME cached
  * search results the trunk matching uses — no extra provider queries.
  *
- * Candidate pool per party = cheapest ~80 by ticket price, plus ~40 with the
- * fewest segments (proxy for fastest — covers the case where a pricier nonstop
- * wins once time is priced). The client picks the best per prefs.
+ * Candidates are selected PER (party, date pair) — cheapest ~12 by ticket price
+ * plus ~6 with the fewest segments (proxy for fastest) — so a solo baseline
+ * exists for every date pair and comparisons against a group option can be
+ * pinned to that option's exact dates. The client picks the best per prefs.
  */
 export interface SoloItineraryDetail {
   itineraryId: number
@@ -89,12 +90,19 @@ export function soloCandidates(db: DB, cfg: TripConfig, provider: string): SoloC
       return cfg.intoChina.includes(outParsed.lastDestination) && cfg.outOfChina.includes(retParsed.firstOrigin)
     })
 
-    const byPrice = [...eligible].sort((a, b) => a.per_person_cents - b.per_person_cents).slice(0, 80)
-    const byStops = [...eligible]
-      .sort((a, b) => a.nsegs - b.nsegs || a.per_person_cents - b.per_person_cents)
-      .slice(0, 40)
+    const byPair = new Map<string, Row[]>()
+    for (const r of eligible) {
+      const k = `${r.dep_date}|${r.ret_date}`
+      byPair.set(k, [...(byPair.get(k) ?? []), r])
+    }
     const pool = new Map<number, Row>()
-    for (const r of [...byPrice, ...byStops]) pool.set(r.id, r)
+    for (const rows of byPair.values()) {
+      const byPrice = [...rows].sort((a, b) => a.per_person_cents - b.per_person_cents).slice(0, 12)
+      const byStops = [...rows]
+        .sort((a, b) => a.nsegs - b.nsegs || a.per_person_cents - b.per_person_cents)
+        .slice(0, 6)
+      for (const r of [...byPrice, ...byStops]) pool.set(r.id, r)
+    }
 
     for (const r of pool.values()) {
       const segs = loadSegments(db, r.id)

@@ -170,8 +170,8 @@ function SoloCompare({
   return (
     <div className="space-y-1.5 rounded-sm bg-chart px-2 py-1.5 text-[11px] text-ink-soft">
       <p>
-        If {partyId} flew alone instead ({shortDate(solo.depDate)} → {shortDate(solo.retDate)} —
-        their own dates): {money(solo.perPersonCents)}/person ·{' '}
+        If {partyId} flew alone on these same dates ({shortDate(solo.depDate)} →{' '}
+        {shortDate(solo.retDate)}): {money(solo.perPersonCents)}/person ·{' '}
         {durationHM(solo.doorMin)} door-to-door — staying with the group costs{' '}
         <span className="font-mono font-semibold">
           {fmtDelta(priceDelta, money)}

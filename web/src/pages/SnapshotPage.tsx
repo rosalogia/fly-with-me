@@ -157,16 +157,27 @@ export function SnapshotPage({ id }: { id: string }) {
         </div>
       </details>
 
-      {selected && (
-        <OptionDrawer
-          id={selected}
-          scored={options.find((o) => o.id === selected) ?? null}
-          frozen
-          soloBest={effectivePrefs ? pickSoloBest(s.solo ?? [], effectivePrefs) : undefined}
-          viewer={viewer}
-          onClose={() => setSelected(null)}
-        />
-      )}
+      {selected &&
+        (() => {
+          const sel = options.find((o) => o.id === selected) ?? null
+          return (
+            <OptionDrawer
+              id={selected}
+              scored={sel}
+              frozen
+              soloBest={
+                effectivePrefs && sel
+                  ? pickSoloBest(s.solo ?? [], effectivePrefs, {
+                      depDate: sel.pairDepart,
+                      retDate: sel.pairReturn,
+                    })
+                  : undefined
+              }
+              viewer={viewer}
+              onClose={() => setSelected(null)}
+            />
+          )
+        })()}
     </div>
   )
 }

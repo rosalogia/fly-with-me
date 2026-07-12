@@ -80,10 +80,6 @@ export function ResultsPage() {
 
   const query = useQuery({ queryKey: ['options', api.tripId], queryFn: api.getOptions })
   const soloQuery = useQuery({ queryKey: ['solo', api.tripId], queryFn: api.getSolo })
-  const soloBest = useMemo(
-    () => pickSoloBest(soloQuery.data ?? [], prefs),
-    [soloQuery.data, prefs],
-  )
 
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const share = useMutation({
@@ -131,6 +127,31 @@ export function ResultsPage() {
     }
     return rescored.sort(cmp[sort])
   }, [query.data, prefs, showIncomplete, gateways, sort, viewer])
+
+  // Solo comparisons are pinned to the dates of the option they're compared with.
+  const selectedOption = selected ? options.find((o) => o.id === selected) ?? null : null
+  const soloBestForSelected = useMemo(
+    () =>
+      selectedOption
+        ? pickSoloBest(soloQuery.data ?? [], prefs, {
+            depDate: selectedOption.pairDepart,
+            retDate: selectedOption.pairReturn,
+          })
+        : new Map<string, never>(),
+    [soloQuery.data, prefs, selectedOption],
+  )
+
+  const benchOption = options.find((o) => o.benchmark) ?? null
+  const soloBestForBench = useMemo(
+    () =>
+      benchOption
+        ? pickSoloBest(soloQuery.data ?? [], prefs, {
+            depDate: benchOption.pairDepart,
+            retDate: benchOption.pairReturn,
+          })
+        : new Map<string, never>(),
+    [soloQuery.data, prefs, benchOption],
+  )
 
   const picks = useMemo(() => {
     const priced = options.filter((o) => o.breakdown)
@@ -243,11 +264,12 @@ export function ResultsPage() {
               </div>
             </button>
           ))}
-          {soloBest.size > 0 &&
+          {benchOption != null &&
+            soloBestForBench.size > 0 &&
             (() => {
-              const parties = [...soloBest.values()]
+              const parties = [...soloBestForBench.values()]
               const soloTotal = parties.reduce((s, c) => s + c.perPersonCents * c.travelers, 0)
-              const benchCash = options.find((o) => o.benchmark)?.cashCents ?? null
+              const benchCash = benchOption.cashCents
               return (
                 <div
                   className="rounded border border-dashed border-line bg-chart/60 p-3"
@@ -260,9 +282,10 @@ export function ResultsPage() {
                   </div>
                   <div className="font-mono text-lg font-semibold">{money(soloTotal)}</div>
                   <div className="text-xs text-ink-soft">
-                    each on their own best flights, not together
+                    same dates as the benchmark ({shortDate(benchOption.pairDepart)} →{' '}
+                    {shortDate(benchOption.pairReturn)}), separate flights
                     {benchCash != null &&
-                      ` — being together costs ${benchCash - soloTotal >= 0 ? '+' : '−'}${money(Math.abs(benchCash - soloTotal))} vs this`}
+                      ` — being together costs ${benchCash - soloTotal >= 0 ? '+' : '−'}${money(Math.abs(benchCash - soloTotal))}`}
                   </div>
                 </div>
               )
@@ -304,8 +327,8 @@ export function ResultsPage() {
       {selected && (
         <OptionDrawer
           id={selected}
-          scored={options.find((o) => o.id === selected) ?? null}
-          soloBest={soloBest}
+          scored={selectedOption}
+          soloBest={soloBestForSelected}
           viewer={viewer}
           onClose={() => setSelected(null)}
         />

@@ -82,7 +82,7 @@ function buildMcp(db: DB, provider: FlightProvider, publicBase: string): McpServ
     'get_solo_baselines',
     {
       description:
-        'Per-party fly-alone candidates (what each party could do abandoning the group). Best per prefs = min over candidates of perPersonCents + hourly*(doorMin/60)*100 + (1-timeQuality)*oddDollars*100. Compare against a group option to price togetherness.',
+        'Per-party fly-alone candidates, selected per date pair. To compare against a group option, FIRST filter to that option\'s pairDepart/pairReturn (same-dates counterfactual), then take min of perPersonCents + hourly*(doorMin/60)*100 + (1-timeQuality)*oddDollars*100 per party.',
       inputSchema: { tripId: z.string().default('main') },
     },
     async (a) => json(soloCandidates(db, requireCfg(a.tripId), provider.name)),
