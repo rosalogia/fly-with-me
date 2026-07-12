@@ -1,4 +1,4 @@
-import type { SoloCandidateDto, TripConfig } from '@fwm/shared'
+import type { SegmentDto, SoloCandidateDto, TripConfig } from '@fwm/shared'
 import type { DB } from '../db/db.js'
 import { deriveDatePairs } from '../fetch/datePairs.js'
 import {
@@ -28,6 +28,44 @@ interface Row {
  * fewest segments (proxy for fastest — covers the case where a pricier nonstop
  * wins once time is priced). The client picks the best per prefs.
  */
+export interface SoloItineraryDetail {
+  itineraryId: number
+  partyId: string
+  travelers: number
+  perPersonCents: number
+  currency: string
+  depDate: string
+  retDate: string
+  segments: SegmentDto[]
+}
+
+/** Full segments for one solo candidate, so its price/time claims are verifiable. */
+export function soloItineraryDetail(
+  db: DB,
+  cfg: TripConfig,
+  provider: string,
+  itineraryId: number,
+): SoloItineraryDetail | undefined {
+  const row = db
+    .prepare(
+      `SELECT i.id, i.party_id, i.travelers, i.per_person_cents, i.currency, i.dep_date, i.ret_date
+       FROM itineraries i JOIN searches s ON s.id = i.search_id
+       WHERE i.id = ? AND i.kind = 'openjaw' AND s.provider = ?`,
+    )
+    .get(itineraryId, provider) as Record<string, string | number> | undefined
+  if (!row || !cfg.parties.some((p) => p.id === row.party_id)) return undefined
+  return {
+    itineraryId: row.id as number,
+    partyId: row.party_id as string,
+    travelers: row.travelers as number,
+    perPersonCents: row.per_person_cents as number,
+    currency: row.currency as string,
+    depDate: row.dep_date as string,
+    retDate: row.ret_date as string,
+    segments: loadSegments(db, row.id as number),
+  }
+}
+
 export function soloCandidates(db: DB, cfg: TripConfig, provider: string): SoloCandidateDto[] {
   const validPairs = new Set(deriveDatePairs(cfg).map((p) => `${p.depart}|${p.ret}`))
   const out: SoloCandidateDto[] = []

@@ -13,7 +13,7 @@ import {
 } from '../config.js'
 import { assembleOptions, findOption } from '../core/groupOptions.js'
 import { createSnapshot, getSnapshot, listSnapshots } from '../core/snapshots.js'
-import { soloCandidates } from '../core/solo.js'
+import { soloCandidates, soloItineraryDetail } from '../core/solo.js'
 import { synthesizeSplitTickets } from '../core/splitTicket.js'
 import type { DB } from '../db/db.js'
 import { deriveDatePairs } from '../fetch/datePairs.js'
@@ -336,7 +336,20 @@ export function buildApp(deps: AppDeps): Hono {
     )
   })
 
-  mount('get', '/solo', (c, _tid, cfg) => c.json(soloCandidates(db, cfg, provider.name)))
+  mount('get', '/solo', (c, tid, cfg) => {
+    const link = linkifier(c)
+    return c.json(
+      soloCandidates(db, cfg, provider.name).map((s) => ({
+        ...s,
+        href: link(`/api/trips/${tid}/solo/${s.itineraryId}`),
+      })),
+    )
+  })
+
+  mount('get', '/solo/:id', (c, _tid, cfg) => {
+    const detail = soloItineraryDetail(db, cfg, provider.name, Number(c.req.param('id')!))
+    return detail ? c.json(detail) : c.json({ error: 'unknown solo itinerary' }, 404)
+  })
 
   mount('get', '/cache/stats', (c, _tid, cfg) => {
     const counts = db

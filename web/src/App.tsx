@@ -88,7 +88,11 @@ function TripApp({ tripId }: { tripId: string }) {
       <div className="min-h-screen">
         <Header />
         <main className="mx-auto max-w-6xl px-4 py-6 space-y-2">
-          <p className="text-amber">This search doesn't exist (or was deleted).</p>
+          <p className="text-amber">
+            {String(trip.error).includes('401')
+              ? 'Not signed in — reload the page and enter the group login.'
+              : "This search doesn't exist (or was deleted)."}
+          </p>
           <a href="/" className="text-sm text-jade underline">
             Back to all searches
           </a>

@@ -15,6 +15,17 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+export interface SoloItineraryDetail {
+  itineraryId: number
+  partyId: string
+  travelers: number
+  perPersonCents: number
+  currency: string
+  depDate: string
+  retDate: string
+  segments: import('@fwm/shared').SegmentDto[]
+}
+
 export interface TripMeta {
   id: string
   name: string
@@ -74,6 +85,7 @@ export interface TripApi {
   }>
   getStats: () => Promise<CacheStatsDto>
   getSolo: () => Promise<SoloCandidateDto[]>
+  getSoloItinerary: (id: number) => Promise<SoloItineraryDetail>
   getHistory: () => Promise<HistoryEntry[]>
   restoreHistory: (id: number) => Promise<TripConfig>
   createSnapshot: (body: {
@@ -99,6 +111,7 @@ export function tripApi(tripId: string): TripApi {
     synthesize: (id) => req(`${base}/options/${id}/synthesize`, { method: 'POST' }),
     getStats: () => req(`${base}/cache/stats`),
     getSolo: () => req(`${base}/solo`),
+    getSoloItinerary: (id) => req(`${base}/solo/${id}`),
     getHistory: () => req(`${base}/config/history`),
     restoreHistory: (id) => req(`${base}/config/history/${id}/restore`, { method: 'POST' }),
     createSnapshot: (body) => req(`${base}/snapshots`, { method: 'POST', body: JSON.stringify(body) }),

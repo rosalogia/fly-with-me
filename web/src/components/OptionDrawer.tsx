@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { PartyItineraryDto, ScoredOptionDto, SegmentDto, SoloCandidateDto } from '@fwm/shared'
 import { linksForLegs, ticketLegs } from '../lib/booking.js'
 import { carrierName } from '../lib/carriers.js'
 import { useTripApiOptional } from '../lib/trip.jsx'
-import { durationHM, localDateTime, money } from '../lib/format.js'
+import { durationHM, localDateTime, money, shortDate } from '../lib/format.js'
 import { COST_COMPONENTS } from './CostBar.js'
 import { TrunkChip } from './TrunkChip.js'
 
@@ -142,7 +142,8 @@ function Leg({ segs, label }: { segs: SegmentDto[]; label: string }) {
   )
 }
 
-/** "If X flew alone instead" comparison against their unconstrained best. */
+/** "If X flew alone instead" comparison against their unconstrained best —
+ *  expandable to the exact itinerary the claim is based on. */
 function SoloCompare({
   partyId,
   groupPpCents,
@@ -154,21 +155,53 @@ function SoloCompare({
   groupDoorMin: number | null
   solo: SoloCandidateDto | undefined
 }) {
+  const api = useTripApiOptional() // null in frozen snapshot views
+  const [open, setOpen] = useState(false)
+  const detail = useQuery({
+    queryKey: ['solo-itin', api?.tripId, solo?.itineraryId],
+    queryFn: () => api!.getSoloItinerary(solo!.itineraryId),
+    enabled: open && api != null && solo != null,
+  })
   if (!solo) return null
   const priceDelta = groupPpCents - solo.perPersonCents
   const timeDelta = groupDoorMin != null ? groupDoorMin - solo.doorMin : null
   const fmtDelta = (v: number, fmt: (x: number) => string) =>
     `${v >= 0 ? '+' : '−'}${fmt(Math.abs(v))}`
   return (
-    <p className="rounded-sm bg-chart px-2 py-1.5 text-[11px] text-ink-soft">
-      If {partyId} flew alone instead: {money(solo.perPersonCents)}/person ·{' '}
-      {durationHM(solo.doorMin)} door-to-door — staying with the group costs{' '}
-      <span className="font-mono font-semibold">
-        {fmtDelta(priceDelta, money)}
-        {timeDelta != null && ` · ${fmtDelta(timeDelta, durationHM)}`}
-      </span>{' '}
-      per person.
-    </p>
+    <div className="space-y-1.5 rounded-sm bg-chart px-2 py-1.5 text-[11px] text-ink-soft">
+      <p>
+        If {partyId} flew alone instead ({shortDate(solo.depDate)} → {shortDate(solo.retDate)} —
+        their own dates): {money(solo.perPersonCents)}/person ·{' '}
+        {durationHM(solo.doorMin)} door-to-door — staying with the group costs{' '}
+        <span className="font-mono font-semibold">
+          {fmtDelta(priceDelta, money)}
+          {timeDelta != null && ` · ${fmtDelta(timeDelta, durationHM)}`}
+        </span>{' '}
+        per person.{' '}
+        {api ? (
+          <button onClick={() => setOpen(!open)} className="font-mono text-jade underline">
+            {open ? 'hide that itinerary' : 'see that itinerary'}
+          </button>
+        ) : (
+          <span className="text-ink-faint">(flight details not stored in frozen snapshots)</span>
+        )}
+      </p>
+      {open && detail.isLoading && <p className="text-ink-faint">Loading…</p>}
+      {open && detail.isError && <p className="text-amber">Couldn't load it: {String(detail.error)}</p>}
+      {open && detail.data && (
+        <div className="space-y-1.5 border-t border-line pt-1.5">
+          {/* isTrunk flags are meaningless here — flying alone, nobody is "together". */}
+          {(['outbound', 'return'] as const).map((leg) => (
+            <Leg
+              key={leg}
+              segs={detail.data.segments.filter((s) => s.leg === leg).map((s) => ({ ...s, isTrunk: false }))}
+              label={leg === 'outbound' ? 'going' : 'coming home'}
+            />
+          ))}
+          <BookLinks segments={detail.data.segments} />
+        </div>
+      )}
+    </div>
   )
 }
 
