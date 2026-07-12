@@ -1,0 +1,30 @@
+{
+  "name": "@fwm/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "cli": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fwm/shared": "*",
+    "@hono/node-server": "^1.13.7",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^11.8.0",
+    "dotenv": "^16.4.7",
+    "hono": "^4.6.14",
+    "luxon": "^3.5.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  }
+}

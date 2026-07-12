@@ -1,0 +1,30 @@
+{
+  "name": "fly-with-me",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rosalogia/fly-with-me.git"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web \"npm run dev --workspace server\" \"npm run dev --workspace web\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:web": "npm run dev --workspace web",
+    "fwm": "tsx server/src/cli.ts",
+    "build": "npm run build --workspace web",
+    "start": "npm run start --workspace server",
+    "share": "npm run build && concurrently -k -n app,tunnel \"npm run start\" \"npx -y cloudflared tunnel --url http://localhost:3000\"",
+    "test": "npm test --workspace server",
+    "typecheck": "tsc -p server --noEmit && tsc -p web --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}
