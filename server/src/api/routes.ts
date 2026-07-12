@@ -152,6 +152,7 @@ export function buildApp(deps: AppDeps): Hono {
         { method: 'GET', path: '/api/trips/:tid/config/history', doc: 'Recent overwritten versions (capped 50). POST /api/trips/:tid/config/history/:hid/restore to bring one back.' },
         { method: 'GET', path: '/api/trips/:tid/date-pairs', doc: 'Derived (depart, return) date pairs.' },
         { method: 'POST', path: '/api/trips/:tid/refresh', doc: 'Body {force?:bool}. Start the provider sweep for this trip -> job {id}. Cache-aware and shared across trips; do not loop forced refreshes.' },
+        { method: 'POST', path: '/api/trips/:tid/refresh-preview', doc: 'Body {config?}. Pure read: how many searches a refresh would run for the given (or saved) config, and how many are already cached. Use before update_trip_config+refresh to tell the user the cost.' },
         { method: 'GET', path: '/api/refresh/:jobId', doc: 'Poll job progress (jobs are global).' },
         { method: 'GET', path: '/api/trips/:tid/options', doc: 'Scored group options. Params: prefs=hourly:20,risk:300,hotel:150,fairness:0,odd:50 (all dollars) · gateways=us|nonus · includeIncomplete=1 · top=N · sort=cost|cash|total|fairness|duration|total_time|per_person_max. Fields: cashCents (real money), benchmark, deltaVsBestCents + deltaBreakdown (vs the benchmark — show these to humans, not trueCostCents), pareto (frontier over cash/person-time/spread).' },
         { method: 'GET', path: '/api/trips/:tid/options/:id', doc: 'Full option detail incl. per-party segments. Structural only — pricing fields come from the options list (they depend on prefs and the full result set).' },
@@ -275,6 +276,25 @@ export function buildApp(deps: AppDeps): Hono {
   })
 
   mount('get', '/date-pairs', (c, _tid, cfg) => c.json(deriveDatePairs(cfg)))
+
+  // How many live searches WOULD a refresh run — for the given (possibly
+  // unsaved) config? Pure read: no save, no fetch. Powers the live cost
+  // preview while editing a setup.
+  mount('post', '/refresh-preview', async (c, _tid, savedCfg) => {
+    const body = (await c.req.json().catch(() => ({}))) as { config?: unknown }
+    let cfg = savedCfg
+    if (body.config) {
+      const parsed = TripConfigSchema.safeParse(body.config)
+      if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+      cfg = parsed.data
+    }
+    const specs = planQueries(cfg)
+    const stmt = db.prepare(
+      `SELECT 1 FROM searches WHERE params_hash = ? AND status IN ('ok','empty') LIMIT 1`,
+    )
+    const cachedQueries = specs.filter((s) => stmt.get(specHash(provider.name, s))).length
+    return c.json({ estimatedFullRefreshQueries: specs.length, cachedQueries })
+  })
 
   mount('post', '/refresh', async (c, _tid, cfg) => {
     const body = (await c.req.json().catch(() => ({}))) as { force?: boolean }

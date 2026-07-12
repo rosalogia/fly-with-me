@@ -76,6 +76,7 @@ export interface TripApi {
   getConfig: () => Promise<TripConfig>
   putConfig: (cfg: TripConfig) => Promise<TripConfig>
   getDatePairs: () => Promise<DatePair[]>
+  refreshPreview: (config?: TripConfig) => Promise<{ estimatedFullRefreshQueries: number; cachedQueries: number }>
   startRefresh: (force: boolean) => Promise<RefreshJobDto>
   getOptions: () => Promise<ScoredOptionDto[]>
   getOption: (id: string) => Promise<GroupOptionDto>
@@ -105,6 +106,8 @@ export function tripApi(tripId: string): TripApi {
     getConfig: () => req(`${base}/config`),
     putConfig: (cfg) => req(`${base}/config`, { method: 'PUT', body: JSON.stringify(cfg) }),
     getDatePairs: () => req(`${base}/date-pairs`),
+    refreshPreview: (config) =>
+      req(`${base}/refresh-preview`, { method: 'POST', body: JSON.stringify({ config }) }),
     startRefresh: (force) => req(`${base}/refresh`, { method: 'POST', body: JSON.stringify({ force }) }),
     getOptions: () => req(`${base}/options?includeIncomplete=1`),
     getOption: (id) => req(`${base}/options/${id}`),

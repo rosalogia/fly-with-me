@@ -112,6 +112,7 @@ export function ConfigPage() {
   if (!cfg) return <p className="text-ink-soft">Loading config…</p>
 
   const set = (patch: Partial<TripConfig>) => setCfg({ ...cfg, ...patch })
+  const isDirty = remote.data != null && JSON.stringify(cfg) !== JSON.stringify(remote.data)
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -239,6 +240,9 @@ export function ConfigPage() {
         >
           {save.isPending ? 'Saving…' : 'Save trip setup'}
         </button>
+        {isDirty && !save.isPending && (
+          <span className="font-mono text-xs text-amber">unsaved changes</span>
+        )}
         <button
           onClick={() => shareSetup.mutate(cfg)}
           disabled={shareSetup.isPending}
@@ -272,7 +276,7 @@ export function ConfigPage() {
 
       <TripTools />
 
-      <RefreshBar />
+      <RefreshBar draft={cfg} isDirty={isDirty} />
     </div>
   )
 }
