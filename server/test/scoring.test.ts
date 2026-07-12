@@ -67,6 +67,40 @@ describe('costBreakdown', () => {
   })
 })
 
+describe('soloWeeks', () => {
+  const cand = (partyId: string, dep: string, ret: string, pp: number, doorMin: number, travelers = 1) => ({
+    partyId, itineraryId: 0, travelers, perPersonCents: pp, doorMin, timeQuality: 1,
+    depDate: dep, retDate: ret,
+  })
+
+  it('ranks date pairs by total generalized cost and totals correctly', async () => {
+    const { soloWeeks, DEFAULT_PREFS } = await import('@fwm/shared')
+    const candidates = [
+      // week 1: cheap for both
+      cand('DC', '2026-10-09', '2026-10-24', 100000, 600, 2),
+      cand('MIA', '2026-10-09', '2026-10-24', 120000, 700),
+      // week 2: pricier
+      cand('DC', '2026-10-16', '2026-10-31', 150000, 600, 2),
+      cand('MIA', '2026-10-16', '2026-10-31', 160000, 700),
+      // a worse duplicate on week 1 that must not be picked
+      cand('DC', '2026-10-09', '2026-10-24', 500000, 600, 2),
+    ]
+    const weeks = soloWeeks(candidates, DEFAULT_PREFS)
+    expect(weeks).toHaveLength(2)
+    expect(weeks[0]!.depDate).toBe('2026-10-09') // cheapest week first
+    expect(weeks[0]!.totalCashCents).toBe(100000 * 2 + 120000)
+    expect(weeks[0]!.coveredParties).toEqual(['DC', 'MIA'])
+    // traveler-weighted door: (600*2 + 700*1)/3
+    expect(weeks[0]!.travelerWeightedDoorMin).toBe(Math.round((600 * 2 + 700) / 3))
+  })
+
+  it('reports partial coverage so callers can exclude non-viable weeks', async () => {
+    const { soloWeeks, DEFAULT_PREFS } = await import('@fwm/shared')
+    const weeks = soloWeeks([cand('DC', '2026-10-09', '2026-10-24', 100000, 600)], DEFAULT_PREFS)
+    expect(weeks[0]!.coveredParties).toEqual(['DC']) // MIA missing -> caller filters out
+  })
+})
+
 describe('costAll pareto (fixed axes: cash, person-time, spread)', () => {
   it('flags dominated options as not-best', () => {
     const a = option({ totalCents: 700000, metrics: metrics({ total_travel_time: 3500 }) }) // cheap, slow

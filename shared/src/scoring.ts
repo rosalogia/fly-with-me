@@ -160,6 +160,60 @@ export function pickSoloBest(
   return best
 }
 
+export interface SoloWeekSummary {
+  depDate: string
+  retDate: string
+  /** Parties with at least one candidate on these dates. */
+  coveredParties: string[]
+  /** Each party's best candidate on these dates (by generalized cost). */
+  best: Record<string, SoloCandidateDto>
+  /** Sum of ticket prices across all travelers. */
+  totalCashCents: number
+  /** Sum of per-person generalized cost × travelers (the ranking key). */
+  totalGcCents: number
+  /** Traveler-weighted average door-to-door minutes. */
+  travelerWeightedDoorMin: number
+}
+
+/**
+ * "If we all flew separately, which dates are best?" — per date pair, every
+ * party's best independent itinerary, totaled. Sorted by total generalized
+ * cost under the given prefs. Callers should require coveredParties to span
+ * all parties before presenting a pair as viable.
+ */
+export function soloWeeks(candidates: SoloCandidateDto[], prefs: CostPrefs): SoloWeekSummary[] {
+  const pairs = new Map<string, { depDate: string; retDate: string }>()
+  for (const c of candidates) pairs.set(`${c.depDate}|${c.retDate}`, { depDate: c.depDate, retDate: c.retDate })
+
+  const weeks: SoloWeekSummary[] = []
+  for (const pair of pairs.values()) {
+    const best = pickSoloBest(candidates, prefs, pair)
+    if (best.size === 0) continue
+    let totalCash = 0
+    let totalGc = 0
+    let doorWeighted = 0
+    let travelers = 0
+    const bestRecord: Record<string, SoloCandidateDto> = {}
+    for (const [partyId, c] of best) {
+      bestRecord[partyId] = c
+      totalCash += c.perPersonCents * c.travelers
+      totalGc += soloGcCents(c, prefs) * c.travelers
+      doorWeighted += c.doorMin * c.travelers
+      travelers += c.travelers
+    }
+    weeks.push({
+      depDate: pair.depDate,
+      retDate: pair.retDate,
+      coveredParties: [...best.keys()].sort(),
+      best: bestRecord,
+      totalCashCents: totalCash,
+      totalGcCents: totalGc,
+      travelerWeightedDoorMin: Math.round(doorWeighted / travelers),
+    })
+  }
+  return weeks.sort((a, b) => a.totalGcCents - b.totalGcCents)
+}
+
 export interface ScoringResult {
   /** Absolute generalized cost — used for ordering; not shown as a headline. */
   trueCostCents: number | null

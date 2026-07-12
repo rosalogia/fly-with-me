@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  DEFAULT_PREFS, costAll, pickSoloBest, prefsToParam,
+  DEFAULT_PREFS, costAll, pickSoloBest, prefsToParam, soloWeeks,
   type CostPrefs, type ScoredOptionDto,
 } from '@fwm/shared'
 import { OptionDrawer } from '../components/OptionDrawer.js'
@@ -292,6 +292,72 @@ export function ResultsPage() {
             })()}
         </section>
       )}
+
+      {(soloQuery.data ?? []).length > 0 &&
+        (() => {
+          const allParties = [...new Set(soloQuery.data!.map((c) => c.partyId))].sort()
+          const weeks = soloWeeks(soloQuery.data!, prefs).filter(
+            (w) => w.coveredParties.length === allParties.length,
+          )
+          if (weeks.length === 0) return null
+          const bestGc = weeks[0]!.totalGcCents
+          return (
+            <details className="rounded border border-line bg-white px-3 py-2">
+              <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-widest text-ink-faint">
+                Flying separately instead — which dates are best? ({weeks.length} viable weeks)
+              </summary>
+              <div className="overflow-x-auto pt-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+                      <th className="px-2 py-1 font-medium">Dates</th>
+                      <th className="px-2 py-1 text-right font-medium" title="All tickets, everyone, no shared flights">
+                        Total cash
+                      </th>
+                      <th className="px-2 py-1 text-right font-medium" title="Traveler-weighted average, home to home">
+                        Avg door-to-door
+                      </th>
+                      <th className="px-2 py-1 text-right font-medium">Per person</th>
+                      <th className="px-2 py-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeks.map((w, i) => (
+                      <tr key={`${w.depDate}${w.retDate}`} className="border-t border-line/60">
+                        <td className="whitespace-nowrap px-2 py-1.5 text-ink-soft">
+                          {shortDate(w.depDate)} → {shortDate(w.retDate)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono font-semibold">
+                          {money(w.totalCashCents)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono text-ink-soft">
+                          {durationHM(w.travelerWeightedDoorMin)}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-xs text-ink-soft">
+                          {allParties
+                            .map((p) => `${p} ${money(w.best[p]!.perPersonCents)}`)
+                            .join(' · ')}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          {w.totalGcCents === bestGc && (
+                            <span className="rounded-sm bg-jade-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-jade">
+                              best dates
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="pt-2 text-[11px] text-ink-faint">
+                  Everyone books their own best flights for those dates — nobody travels together.
+                  Ranked by your dollar knobs (price + time + comfort); open any group option's
+                  details to see the same-dates comparison per person.
+                </p>
+              </div>
+            </details>
+          )
+        })()}
 
       <div className="flex flex-wrap items-baseline gap-3 font-mono text-xs text-ink-soft">
         {query.isLoading && <span>Loading options…</span>}

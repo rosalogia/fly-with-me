@@ -113,6 +113,12 @@ parties may actually do BETTER in the group.
 `GET .../cache/stats` → `lastFetchedAt`. If old, one `POST .../refresh {}` (not forced);
 `force: true` only when the user explicitly wants everything re-fetched.
 
+**"If we split up, which dates are best?"**
+Group solo candidates by (depDate, retDate); drop pairs that don't cover every party; per
+pair take each party's best (min soloGc) and rank pairs by Σ travelers × soloGc. Report
+total cash and traveler-weighted door-to-door per pair. The web UI shows this under
+"Flying separately instead" on a trip's Options page.
+
 **"How do we actually BOOK this?"**
 This service doesn't sell tickets, and its provider offers expire in minutes — never
 present a fare as purchasable here. Build "verify & book" links to prefilled searches
