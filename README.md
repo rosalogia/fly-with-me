@@ -57,8 +57,9 @@ Two options, in increasing permanence:
 
 1. **Named Cloudflare tunnel** — free, stable hostname, still runs on your machine.
    Needs a Cloudflare account **and a domain in it**: `cloudflared tunnel login`,
-   `cloudflared tunnel create fwm`, route a DNS name to it, then run
-   `cloudflared tunnel run fwm` instead of the quick tunnel.
+   `cloudflared tunnel create fwm`, `cloudflared tunnel route dns fwm <host>`, write
+   `~/.cloudflared/config.yml` (tunnel id + ingress to `http://localhost:3000`), then
+   `npm run serve` starts the app and the named tunnel together after any reboot.
 2. **Always-on deploy (recommended)** — a `Dockerfile` and `fly.toml` are included.
    On Fly.io: `fly launch --copy-config --no-deploy`, `fly volumes create data --size 1`,
    `fly secrets set DUFFEL_TOKEN=... SHARE_PASSWORD=...`, `fly deploy` → a permanent

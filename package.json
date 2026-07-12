@@ -20,6 +20,7 @@
     "build": "npm run build --workspace web",
     "start": "npm run start --workspace server",
     "share": "npm run build && concurrently -k -n app,tunnel \"npm run start\" \"npx -y cloudflared tunnel --url http://localhost:3000\"",
+    "serve": "npm run build && concurrently -k -n app,tunnel \"npm run start\" \"npx -y cloudflared tunnel run fwm\"",
     "test": "npm test --workspace server",
     "typecheck": "tsc -p server --noEmit && tsc -p web --noEmit"
   },
